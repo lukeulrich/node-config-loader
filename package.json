@@ -1,0 +1,32 @@
+{
+  "name": "node-config-loader",
+  "version": "1.0.0",
+  "description": "Simplifies loading environment specific configuration",
+  "main": "index.js",
+  "scripts": {
+    "test": "node_modules/.bin/mocha index.tests.js test-data/load-from-config-folder/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lukeulrich/node-config-loader.git"
+  },
+  "keywords": [
+    "node",
+    "config",
+    "environment"
+  ],
+  "author": "Luke Ulrich <lukeulrich@users.noreply.github.com>",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/lukeulrich/node-config-loader/issues"
+  },
+  "homepage": "https://github.com/lukeulrich/node-config-loader#readme",
+  "dependencies": {
+    "lodash.merge": "^4.6.0"
+  },
+  "devDependencies": {
+    "chai": "^3.5.0",
+    "istanbul": "^0.4.5",
+    "mocha": "^3.0.2"
+  }
+}
