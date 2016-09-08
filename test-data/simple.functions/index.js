@@ -1,8 +1,7 @@
 'use strict'
 
-module.exports = function(...args) {
+module.exports = function() {
 	return {
-		name: 'node-config-loader',
-		args
+		name: 'node-config-loader'
 	}
 }

@@ -1,8 +1,7 @@
 'use strict'
 
-module.exports = function(...args) {
+module.exports = function() {
 	return {
-		enabled: true,
-		args
+		enabled: true
 	}
 }

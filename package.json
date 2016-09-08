@@ -4,7 +4,8 @@
   "description": "Simplifies loading environment specific configuration",
   "main": "index.js",
   "scripts": {
-    "test": "node_modules/.bin/mocha index.tests.js test-data/load-from-config-folder/index.js"
+    "test": "node_modules/.bin/mocha index.tests.js test-data/load-from-config-folder/index.js",
+    "coverage": "node_modules/.bin/istanbul cover -x 'test-data/**' -x '*.tests.js' node_modules/mocha/bin/_mocha -- index.tests.js test-data/load-from-config-folder/index.js"
   },
   "repository": {
     "type": "git",

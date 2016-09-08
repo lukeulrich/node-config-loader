@@ -9,37 +9,37 @@ const fs = require('fs'),
 const merge = require('lodash.merge')
 
 // Constants
-const kBasePath = path.resolve('.'),
-	kDefaultDatabaseUrlEnvKey = 'DATABASE_URL',
+const kDefaultDatabaseUrlEnvKey = 'DATABASE_URL',
 	kDefaultDatabaseKey = 'database'
 
 /**
+ * @param {String} configDirectory - base config directory containing configuration files and subdirectories
  * @param {Object} [config = {}] - common configuration regardless of environment (may be overridden by other files)
  * @param {Object} [options = {}]
- * @param {String} [options.configDirectory = '.'] - base config directory containing configuration files and subdirectories
+ * @param {Boolean} [options.includeRootIndex = false] - if true will also load ${configDirectory}/index.js if one exists; false otherwise
  * @param {String} [options.databaseUrlEnvKey = 'DATABASE_URL']
  * @param {String} [options.databaseKey = 'database'] - key to set in config when parsing process.env[options.databaseEnvKey]
  * @returns {Object}
  */
-module.exports = function(config = {}, options = {}) {
+module.exports = function(configDirectory, config = {}, options = {}) {
+	if (!isDirectory(configDirectory))
+		throw new Error(`${configDirectory} is not a valid directory`)
+
 	// Initialize defaults
 	if (!config)
 		config = {} // eslint-disable-line no-param-reassign
-	if (!options.configDirectory)
-		options.configDirectory = kBasePath
 	if (!options.databaseUrlEnvKey)
 		options.databaseUrlEnvKey = kDefaultDatabaseUrlEnvKey
 	if (!options.databaseKey)
 		options.databaseKey = kDefaultDatabaseKey
-
-	if (!isDirectory(options.configDirectory))
-		throw new Error(`${options.configDirectory} is not a valid directory`)
+	options.includeRootIndex = !!options.includeRootIndex
 
 	// Load base configuration
-	mergeConfigFiles(config, options.configDirectory)
+	mergeConfigFiles(config, configDirectory, options.includeRootIndex)
 
-	// Load environment configuration
 	/**
+	 * Load environment configuration
+	 *
 	 * Environment names are based on the NODE_ENV environment variable.
 	 *
 	 * Recommended names for the environment:
@@ -57,15 +57,18 @@ module.exports = function(config = {}, options = {}) {
 	 * ${environment name}/index.js
 	 * local/index.js (not part of the repository)
 	 *
-	 * Finally, if any configuration is set via environment variables (e.g. DATABASE_URL),
-	 * that takes precedence over any configuration in files.
+	 * Finally, if the database configuration is set via the environment variable, DATABASE_URL, or
+	 * whichever one is passed in the options, that takes precedence over any file configuration.
 	 */
-	let environmentName = process.env.NODE_ENV || 'develop'
+	let environmentName = process.env.NODE_ENV || 'develop',
+		environmentConfigDirectory = path.resolve(configDirectory, environmentName)
 
-	mergeConfigFiles(config, path.resolve(options.configDirectory, environmentName))
+	mergeConfigFiles(config, environmentConfigDirectory)
 
-	// Load local overrides
-	mergeConfigFiles(config, path.resolve(options.configDirectory, 'local'))
+	// Load local overrides - if NODE_ENV is set to 'local', these will get processed 2x (operator
+	// error)
+	let localConfigDirectory = path.resolve(configDirectory, 'local')
+	mergeConfigFiles(config, localConfigDirectory)
 
 	// Load any database environment configuration
 	let databaseUrl = process.env[options.databaseUrlEnvKey]
@@ -84,46 +87,51 @@ module.exports = function(config = {}, options = {}) {
 }
 
 // --------------------------------------------------------
-function mergeConfigFiles(config, directory) {
-	getConfigFileNames(directory)
+/**
+ * @param {Object} config - base configuration to be extended with the configuration files in ${directory}
+ * @param {String} directory - directory to search for configuration files
+ * @param {Boolean} [includeIndexFile = true]
+ */
+function mergeConfigFiles(config, directory, includeIndexFile = true) {
+	getConfigFileNames(directory, includeIndexFile)
 	.forEach((configFile) => {
+		let moreConfig = require(configFile)
+		if (typeof moreConfig === 'function')
+			moreConfig = moreConfig()
+
 		let baseName = path.basename(configFile, '.js')
-		try {
-			let moreConfig = require(configFile)
-			if (typeof moreConfig === 'function')
-				moreConfig = moreConfig(kBasePath)
-
-			if (baseName !== 'index') {
-				if (!config[baseName])
-					config[baseName] = moreConfig
-				else
-					merge(config[baseName], moreConfig)
-			}
-			else {
-				merge(config, moreConfig)
-			}
+		if (baseName !== 'index') {
+			if (!config[baseName])
+				config[baseName] = moreConfig
+			else
+				merge(config[baseName], moreConfig)
 		}
-		catch (error) {
-			if (error.code === 'MODULE_NOT_FOUND')
-				return
-
-			// Some other error parsing error occurred, rethrow
-			throw error
+		else {
+			merge(config, moreConfig)
 		}
 	})
 }
 
 /**
- * @param {String} directory
+ * @param {String} directory - directory to search for configuration files
+ * @param {Boolean} includeIndexFile
  * @returns {Array.<String>} - absolute paths to configuration files in ${directory}
  */
-function getConfigFileNames(directory) {
+function getConfigFileNames(directory, includeIndexFile) {
 	if (!isDirectory(directory))
 		return []
 
-	let result = fs.readdirSync(directory)
+	let foundIndexFile = false,
+		result = fs.readdirSync(directory)
 	.filter((configFileName) => {
-		if (configFileName === 'index.js' || !configFileName.endsWith('.js'))
+		// Even if ${includeIndexFile} is true, do not include it here. We want it to be loaded
+		// before the other files, thus it is added to result in a later step.
+		if (configFileName === 'index.js') {
+			foundIndexFile = true
+			return false
+		}
+
+		if (!configFileName.endsWith('.js'))
 			return false
 
 		let resolvedPath = path.resolve(directory, configFileName),
@@ -132,14 +140,17 @@ function getConfigFileNames(directory) {
 	})
 	.map((fileName) => path.resolve(directory, fileName))
 
-	let isConfigSubDirectory = path.resolve(directory) !== kBasePath
-	if (isConfigSubDirectory)
+	if (foundIndexFile && includeIndexFile)
 		// Process any index.js file *before* the other files
 		result.unshift(path.resolve(directory, 'index.js'))
 
 	return result
 }
 
+/**
+ * @param {String} directory
+ * @returns {Boolean} - true if ${directory} exists and is a directory; false otherwise
+ */
 function isDirectory(directory) {
 	let stat = null
 	try {
@@ -152,10 +163,11 @@ function isDirectory(directory) {
 	return stat.isDirectory()
 }
 
+/**
+ * @param {String} databaseUrl
+ * @returns {Object|false} - if successfully parsed the DATABASE_URL, returns an Object with the relevant information; false otherwise
+ */
 function parseDatabaseUrl(databaseUrl) {
-	if (!databaseUrl)
-		return null
-
 	// e.g. dialect://user:password@host:port/name
 	//                 1------------| 2------------------------| 3----------------------------------------| 4--|
 	// 5------------|
