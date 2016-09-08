@@ -11,7 +11,7 @@ const expect = require('chai').expect
 const loadConfig = require('./index')
 
 // Constants
-const kTestRootPath = path.resolve('.', 'test-data')
+const kTestRootPath = path.resolve(__dirname, 'test-data')
 
 // --------------------------------------------------------
 describe('node-config-loader', function() {
