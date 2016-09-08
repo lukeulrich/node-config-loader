@@ -169,8 +169,7 @@ function isDirectory(directory) {
  */
 function parseDatabaseUrl(databaseUrl) {
 	// e.g. dialect://user:password@host:port/name
-	//                 1------------| 2------------------------| 3----------------------------------------| 4--|
-	// 5------------|
+	//      1-----|   2--| 3------| 4--| 5--| 6--|
 	let matches = databaseUrl.match(/^([^:]+):\/\/([^:]+):([^@]+)@([^:]+):(\d+)\/(.+)/)
 	if (matches) {
 		return {
