@@ -3,5 +3,5 @@ node_js:
   - "6"
 install:
   - npm install -g codecov
-script:
-  - istanbul cover ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec && codecov
+after_success:
+  - ./node_modules/.bin/istanbul cover -x 'test-data/**' -x '*.tests.js' ./node_modules/mocha/bin/_mocha --report lcovonly -- -R spec ./index.tests.js ./test-data/load-from-config-folder/index.js && codecov
