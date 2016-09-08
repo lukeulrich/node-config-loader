@@ -1,5 +1,6 @@
 # node-config-loader
 [![Build Status](https://travis-ci.org/lukeulrich/node-config-loader.svg?branch=master)](https://travis-ci.org/lukeulrich/node-config-loader)
+[![codecov](https://codecov.io/gh/lukeulrich/node-config-loader/branch/master/graph/badge.svg)](https://codecov.io/gh/lukeulrich/node-config-loader)
 
 Simplifies loading environment specific configuration in a developer friendly approach.
 
